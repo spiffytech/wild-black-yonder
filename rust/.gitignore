@@ -1,0 +1,9 @@
+/target
+db.sqlite*
+.trigger
+public/tailwind.css
+node_modules
+.env.*
+.jj
+config.toml
+.vscode

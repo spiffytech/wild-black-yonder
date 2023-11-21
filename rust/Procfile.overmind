@@ -1,0 +1,3 @@
+cargo_run: cargo watch -x clippy -s 'cargo run --timings'
+
+tailwind: bunx tailwindcss -i ./src/tailwind.css -o ./public/tailwind.css --watch

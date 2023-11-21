@@ -1,0 +1,2 @@
+dev:
+    overmind start --procfile  Procfile.overmind --no-port
