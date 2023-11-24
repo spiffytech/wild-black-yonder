@@ -10,7 +10,7 @@ pub fn page(content: Markup, scripts: Option<Markup>) -> Markup {
           meta name="viewport" content="width=device-width, initial-scale=1";
           meta name="google" content="notranslate";
 
-          title {"Tasks App"}
+          title {"Space traders"}
 
           script type="module" {
             (PreEscaped("
