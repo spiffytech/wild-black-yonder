@@ -28,16 +28,10 @@ pub async fn system_waypoints(conf: &Configuration) -> Vec<Waypoint> {
     // API is 1-indexed
     let mut page = 1;
     loop {
-        let response = systems_api::get_system_waypoints(
-            conf,
-            system.as_str(),
-            Some(page),
-            Some(20),
-            None,
-            None,
-        )
-        .await
-        .unwrap();
+        let response =
+            systems_api::get_system_waypoints(conf, system.as_str(), Some(page), Some(20))
+                .await
+                .unwrap();
         waypoints.extend(response.data);
         println!("Meta: {:?}", response.meta);
         if response.meta.total <= waypoints.len() as i32 {
@@ -69,5 +63,24 @@ pub async fn ship_buy(conf: &Configuration, ship_type: ShipType, waypoint: Strin
 
 pub async fn get_my_ships(conf: &Configuration) -> Vec<Ship> {
     let response = fleet_api::get_my_ships(conf, None, None).await.unwrap();
+    for ship in response.data.iter() {
+        println!("Ship: {:#?}", ship);
+    }
     response.data
+}
+
+pub async fn get_ship_nav_choices(waypoints: Vec<Waypoint>, ship: &Ship) -> Vec<(Waypoint, f64)> {
+    let ship_location = &ship.nav.route.origin;
+
+    let mut distances = waypoints
+        .into_iter()
+        .map(|w| {
+            let dist =
+                (((w.x - ship_location.x).pow(2) + (w.y - ship_location.y).pow(2)) as f64).sqrt();
+            (w, dist)
+        })
+        .collect::<Vec<(Waypoint, f64)>>();
+
+    distances.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    distances
 }

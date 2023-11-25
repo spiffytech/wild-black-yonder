@@ -4,7 +4,8 @@ use std::sync::Arc;
 use maud::{html, Markup};
 
 use spacedust::apis::configuration::Configuration;
-use spacedust::models::ShipType;
+use spacedust::apis::fleet_api;
+use spacedust::models::{NavigateShipRequest, ShipNavStatus, ShipType};
 
 use axum::debug_handler;
 use axum::extract::{Path, State};
@@ -65,7 +66,6 @@ pub struct ShipyardParams {
     system: String,
     waypoint: String,
 }
-
 #[debug_handler]
 pub async fn shipyard(
     State(state): State<Arc<Mutex<Configuration>>>,
@@ -89,7 +89,6 @@ pub struct ShipBuyParams {
     waypoint: String,
     ship_type: ShipType,
 }
-
 #[debug_handler]
 pub async fn ship_buy(
     State(state): State<Arc<Mutex<Configuration>>>,
@@ -97,6 +96,66 @@ pub async fn ship_buy(
 ) -> Result<impl IntoResponse, AppError> {
     let conf = state.lock().clone();
     spacetraders::ship_buy(&conf, params.ship_type, params.waypoint).await;
+
+    Ok(Redirect::to("/").into_response())
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ShipNavChoicesParams {
+    ship_symbol: String,
+}
+#[debug_handler]
+pub async fn ship_nav_choices(
+    State(state): State<Arc<Mutex<Configuration>>>,
+    Path(params): Path<ShipNavChoicesParams>,
+) -> Result<impl IntoResponse, AppError> {
+    let conf = state.lock().clone();
+    let ship = *fleet_api::get_my_ship(&conf, params.ship_symbol.as_str())
+        .await
+        .unwrap()
+        .data;
+    let waypoints = spacetraders::system_waypoints(&conf).await;
+    let waypoints = spacetraders::get_ship_nav_choices(waypoints, &ship).await;
+
+    Ok(page(
+        html! {
+            @for (waypoint, dist) in waypoints {
+                (fragments::waypoint_html(waypoint, Some((&ship, dist))))
+            }
+        },
+        None,
+    ))
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ShipGoParams {
+    ship_symbol: String,
+    waypoint: String,
+}
+#[debug_handler]
+pub async fn ship_nav_go(
+    State(state): State<Arc<Mutex<Configuration>>>,
+    Path(params): Path<ShipGoParams>,
+) -> Result<impl IntoResponse, AppError> {
+    let conf = state.lock().clone();
+    let ship = fleet_api::get_my_ship(&conf, params.ship_symbol.as_str())
+        .await
+        .unwrap()
+        .data;
+
+    if ship.nav.status == ShipNavStatus::Docked {
+        fleet_api::orbit_ship(&conf, ship.symbol.as_str())
+            .await
+            .unwrap();
+    }
+
+    fleet_api::navigate_ship(
+        &conf,
+        ship.symbol.as_str(),
+        Some(NavigateShipRequest::new(params.waypoint)),
+    )
+    .await
+    .unwrap();
 
     Ok(Redirect::to("/").into_response())
 }

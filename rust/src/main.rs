@@ -50,7 +50,18 @@ async fn main() {
     let app = Router::new()
         .route("/", get(routes::index))
         .route("/shipyard/:system/:waypoint", get(routes::shipyard))
-        .route("/ships/:waypoint/buy/:ship_type", post(routes::ship_buy))
+        .route(
+            "/waypoints/:waypoint/buy_ship/:ship_type",
+            post(routes::ship_buy),
+        )
+        .route(
+            "/ship_nav/:ship_symbol/choices",
+            get(routes::ship_nav_choices),
+        )
+        .route(
+            "/ship_nav/:ship_symbol/go/:waypoint",
+            post(routes::ship_nav_go),
+        )
         .with_state(conf)
         .fallback_service(static_assets_service)
         .layer(middleware::from_fn(caching_middleware));

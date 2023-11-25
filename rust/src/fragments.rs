@@ -1,5 +1,5 @@
 use maud::{html, Markup};
-use spacedust::models::{Ship, Shipyard, WaypointTraitSymbol};
+use spacedust::models::{Ship, ShipNavStatus, Shipyard, WaypointTraitSymbol};
 
 fn from_now(iso: String) -> String {
     let now = chrono::Utc::now();
@@ -79,13 +79,23 @@ pub fn contract_html(contract: spacedust::models::Contract) -> Markup {
     }
 }
 
-pub fn waypoint_html(waypoint: spacedust::models::Waypoint) -> Markup {
+pub fn waypoint_html(
+    waypoint: spacedust::models::Waypoint,
+    nav_distance: Option<(&Ship, f64)>,
+) -> Markup {
     html! {
         div {
             div class="capitalize flex gap-2 items-baseline" {
                 span class="text-lg font-semibold" {(waypoint.r#type.to_string().to_lowercase())}
                 span class="text-sm text-gray-700 italic" {
                     (waypoint.symbol)
+                    @if let Some((ship, dist)) = nav_distance {
+                        form method="POST" action=(format!("/ship_nav/{ship_symbol}/go/{waypoint}", ship_symbol=ship.symbol, waypoint=waypoint.symbol)) up-layer="parent" {
+                            button {
+                                (dist) i class="bi-arrow-right" {}
+                            }
+                        }
+                    }
                 }
             }
             ul class="flex gap-2" {
@@ -136,20 +146,20 @@ pub fn waypoints_html(waypoints: Vec<spacedust::models::Waypoint>) -> Markup {
                 summary class="text-lg font-semibold" {"Shipyards"}
                 ul class="ml-4" {
                     @for waypoint in shipyards {
-                        li {(waypoint_html(waypoint))}
+                        li {(waypoint_html(waypoint, None))}
                     }
                 }
             }
         }
 
         @for waypoint in by_type {
-            (waypoint_html(waypoint))
+            (waypoint_html(waypoint, None))
         }
         @for waypoint in fuel_stations {
-            (waypoint_html(waypoint))
+            (waypoint_html(waypoint, None))
         }
         @for waypoint in asteroids {
-            (waypoint_html(waypoint))
+            (waypoint_html(waypoint, None))
         }
     }
 }
@@ -175,7 +185,7 @@ pub fn shipyard_html(shipyard: Shipyard) -> Markup {
                     div {"Fuel: " (ship.frame.fuel_capacity)}
                     form
                         method="POST"
-                        action={"/ships/" (shipyard.symbol) "/buy/" (ship.r#type.unwrap().to_string())}
+                        action={"/waypoints/" (shipyard.symbol) "/buy_ship/" (ship.r#type.unwrap().to_string())}
                         up-layer="parent"
                     {
                         button type="submit" class="border rounded-md bg-gray-100 px-2 py-1" {"Buy"}
@@ -192,7 +202,19 @@ pub fn ships_html(ships: Vec<Ship>) -> Markup {
         ul {
             @for ship in ships {
                 li {
-                    (ship.registration.name) " " (ship.registration.role.to_string()) " " (ship.symbol) "(Fuel " (ship.fuel.current) "/" (ship.fuel.capacity) ")"
+                    (format!("{} {} (Fuel {}/{}) {:?}", ship.symbol, ship.registration.role.to_string(), ship.fuel.current, ship.fuel.capacity, ship.nav.status))
+
+                    @if ship.nav.status == ShipNavStatus::InTransit {
+                        (format!(" ETA: {}", from_now(ship.nav.route.arrival)))
+                    }
+
+                    a
+                        href=(format!("/ship_nav/{ship_symbol}/choices", ship_symbol=ship.symbol))
+                        up-layer="new"
+                        up-history="false"
+                    {
+                        i class="bi-airplane ml-2" {}
+                    }
                 }
             }
         }
