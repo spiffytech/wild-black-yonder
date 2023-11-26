@@ -253,8 +253,7 @@ pub async fn ship_refuel(
     Path(params): Path<ShipRefuelParams>,
 ) -> Result<impl IntoResponse, AppError> {
     let conf = &state.conf;
-    let ship = spacetraders::get_ship(conf, &params.ship_symbol).await;
-    let ship = spacetraders::ship_refuel(conf, ship).await;
+    let ship = spacetraders::ship_refuel(conf, ShipOrShipSymbol::Symbol(params.ship_symbol)).await;
     let (ship, waypoint) = spacetraders::get_ship_with_waypoint(
         conf,
         ShipOrShipSymbol::Ship(ship),

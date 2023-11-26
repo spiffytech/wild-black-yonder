@@ -18,6 +18,13 @@ impl ShipOrShipSymbol {
             ShipOrShipSymbol::Symbol(ship_symbol) => get_ship(conf, ship_symbol.as_str()).await,
         }
     }
+
+    pub fn symbol(&self) -> String {
+        match self {
+            ShipOrShipSymbol::Ship(ship) => ship.symbol.clone(),
+            ShipOrShipSymbol::Symbol(ship_symbol) => ship_symbol.clone(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -205,10 +212,10 @@ pub async fn get_ship_with_waypoint(
     )
 }
 
-pub async fn ship_refuel(conf: &Configuration, ship: Ship) -> Ship {
-    fleet_api::refuel_ship(conf, &ship.symbol, Some(RefuelShipRequest::new()))
+pub async fn ship_refuel(conf: &Configuration, symbol: ShipOrShipSymbol) -> Ship {
+    fleet_api::refuel_ship(conf, &symbol.symbol(), Some(RefuelShipRequest::new()))
         .await
         .unwrap();
 
-    get_ship(conf, &ship.symbol).await
+    symbol.get(conf).await
 }
