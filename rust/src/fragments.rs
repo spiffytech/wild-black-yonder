@@ -1,7 +1,7 @@
 use maud::{html, Markup};
-use spacedust::models::{Ship, ShipNavStatus, Shipyard, Waypoint, WaypointTraitSymbol};
+use spacedust::models::{Ship, ShipNavStatus, Shipyard, WaypointTraitSymbol};
 
-use crate::spacetraders::{self, ShipWaypoint, WaypointFeatures};
+use crate::spacetraders::{ShipWaypoint, WaypointFeatures};
 
 fn from_now(iso: String) -> String {
     let now = chrono::Utc::now();
@@ -254,7 +254,8 @@ pub fn ship_html(ship: Ship, ship_waypoint: ShipWaypoint) -> Markup {
                             i title="Shipyard" class="bi-rocket" {}
                         },
                         WaypointFeatures::Fuel => {
-                            i title="Fuel" class="bi-fuel-pump" {}
+                            @let ship_fuel_full = ship.fuel.current == ship.fuel.capacity;
+                            i title="Fuel" class={"bi-fuel-pump " (if ship_fuel_full {"text-gray-400"} else {""})}  {}
                         },
                     }
                 }
