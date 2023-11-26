@@ -1,7 +1,20 @@
 use spacedust::apis::agents_api::get_my_agent;
 use spacedust::apis::configuration::Configuration;
 use spacedust::apis::{contracts_api, fleet_api, systems_api};
-use spacedust::models::{Agent, Contract, PurchaseShipRequest, Ship, ShipType, Shipyard, Waypoint};
+use spacedust::models::{
+    Agent, Contract, PurchaseShipRequest, Ship, ShipType, Shipyard, Waypoint, WaypointTraitSymbol,
+};
+
+pub enum WaypointFeatures {
+    Marketplace,
+    Shipyard,
+    Fuel,
+}
+
+pub struct ShipWaypoint {
+    pub waypoint: Waypoint,
+    pub features: Vec<WaypointFeatures>,
+}
 
 pub async fn agent(conf: &Configuration) -> Agent {
     let agent = get_my_agent(conf).await.expect("Idunno, a test error?");
@@ -107,23 +120,19 @@ pub async fn get_ship_nav_choices(ship: &Ship, waypoints: Vec<Waypoint>) -> Vec<
     distances
 }
 
-pub fn get_ship_waypoint(ship: Ship, waypoints: &[Waypoint]) -> Waypoint {
-    waypoints
-        .iter()
-        .find(|w| w.symbol == ship.nav.waypoint_symbol)
+pub async fn get_ship(conf: &Configuration, ship_symbol: &str) -> Ship {
+    *fleet_api::get_my_ship(conf, ship_symbol)
+        .await
         .unwrap()
-        .clone()
+        .data
 }
 
 pub async fn get_ship_with_waypoint(
     conf: &Configuration,
     ship_symbol: &str,
     waypoints_cache: &crate::WaypointsCache,
-) -> (Ship, Waypoint) {
-    let ship = *fleet_api::get_my_ship(conf, ship_symbol)
-        .await
-        .unwrap()
-        .data;
+) -> (Ship, ShipWaypoint) {
+    let ship = get_ship(conf, ship_symbol).await;
 
     println!(
         "Waypoint symbol: {}, cache entry count: {}",
@@ -131,7 +140,31 @@ pub async fn get_ship_with_waypoint(
         waypoints_cache.entry_count()
     );
     let waypoints = waypoints_cache.get(&ship.nav.system_symbol).await.unwrap();
-    let waypoint = get_ship_waypoint(ship.clone(), &waypoints);
+    let waypoint = waypoints
+        .iter()
+        .find(|w| w.symbol == ship.nav.waypoint_symbol)
+        .unwrap()
+        .clone();
 
-    (ship, waypoint)
+    let mut waypoint_features: Vec<WaypointFeatures> = vec![];
+    waypoint
+        .traits
+        .iter()
+        .for_each(|trait_| match trait_.symbol {
+            WaypointTraitSymbol::Marketplace => {
+                waypoint_features.push(WaypointFeatures::Marketplace);
+            }
+            WaypointTraitSymbol::Shipyard => {
+                waypoint_features.push(WaypointFeatures::Shipyard);
+            }
+            _ => {}
+        });
+
+    (
+        ship,
+        ShipWaypoint {
+            waypoint,
+            features: waypoint_features,
+        },
+    )
 }

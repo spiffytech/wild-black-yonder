@@ -1,7 +1,7 @@
 use maud::{html, Markup};
 
 use spacedust::apis::fleet_api;
-use spacedust::models::{NavigateShipRequest, ShipNavStatus, ShipType};
+use spacedust::models::{NavigateShipRequest, Ship, ShipNavStatus, ShipType};
 
 use axum::debug_handler;
 use axum::extract::{Path, State};
@@ -11,7 +11,7 @@ use axum::response::{IntoResponse, Redirect, Response};
 use serde::Deserialize;
 
 use crate::render::page;
-use crate::spacetraders;
+use crate::spacetraders::{self, ShipWaypoint};
 
 use crate::fragments;
 use crate::AppStateShared;
@@ -28,6 +28,16 @@ pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppErr
         spacetraders::system_waypoints(conf, system_symbol, state.waypoints_cache.clone()).await;
 
     let ships = spacetraders::get_my_ships(conf).await;
+    let mut ships_with_waypoints: Vec<(Ship, ShipWaypoint)> = vec![];
+    for ship in ships {
+        let ship_waypoint = spacetraders::get_ship_with_waypoint(
+            conf,
+            ship.symbol.as_str(),
+            &state.waypoints_cache,
+        )
+        .await;
+        ships_with_waypoints.push(ship_waypoint);
+    }
 
     Ok(page(
         html! {
@@ -38,7 +48,7 @@ pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppErr
 
             div {
                 header class="text-lg font-semibold" {"My Ships"}
-                (fragments::ships_html(ships, &waypoints))
+                (fragments::ships_html(ships_with_waypoints))
             }
 
             div {
@@ -201,14 +211,14 @@ pub async fn ship_orbit(
         .await
         .unwrap();
 
-    let (ship, waypoint) = spacetraders::get_ship_with_waypoint(
+    let (ship, ship_waypoint) = spacetraders::get_ship_with_waypoint(
         conf,
         params.ship_symbol.as_str(),
         &state.waypoints_cache,
     )
     .await;
 
-    Ok(fragments::ship_html(ship, waypoint))
+    Ok(fragments::ship_html(ship, ship_waypoint))
 }
 
 pub struct AppError(anyhow::Error);

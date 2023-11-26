@@ -1,7 +1,7 @@
 use maud::{html, Markup};
 use spacedust::models::{Ship, ShipNavStatus, Shipyard, Waypoint, WaypointTraitSymbol};
 
-use crate::spacetraders;
+use crate::spacetraders::{self, ShipWaypoint, WaypointFeatures};
 
 fn from_now(iso: String) -> String {
     let now = chrono::Utc::now();
@@ -199,22 +199,7 @@ pub fn shipyard_html(shipyard: Shipyard) -> Markup {
     }
 }
 
-pub fn ship_html(ship: Ship, waypoint: Waypoint) -> Markup {
-    enum WaypointFeatures {
-        Marketplace,
-        Fuel,
-    }
-    let mut waypoint_features: Vec<WaypointFeatures> = vec![];
-    waypoint
-        .traits
-        .iter()
-        .for_each(|trait_| match trait_.symbol {
-            WaypointTraitSymbol::Marketplace => {
-                waypoint_features.push(WaypointFeatures::Marketplace);
-            }
-            _ => {}
-        });
-
+pub fn ship_html(ship: Ship, ship_waypoint: ShipWaypoint) -> Markup {
     html! {
         li class="ship" {
             div {
@@ -260,10 +245,13 @@ pub fn ship_html(ship: Ship, waypoint: Waypoint) -> Markup {
 
                 {(ship.nav.waypoint_symbol)}
 
-                @for waypoint_feature in waypoint_features {
-                    @match waypoint_feature {
+                @for feature in ship_waypoint.features {
+                    @match feature {
                         WaypointFeatures::Marketplace => {
                             i title="Marketplace" class="bi-shop" {}
+                        },
+                        WaypointFeatures::Shipyard => {
+                            i title="Shipyard" class="bi-rocket" {}
                         },
                         WaypointFeatures::Fuel => {
                             i title="Fuel" class="bi-fuel-pump" {}
@@ -275,12 +263,7 @@ pub fn ship_html(ship: Ship, waypoint: Waypoint) -> Markup {
     }
 }
 
-pub fn ships_html(ships: Vec<Ship>, waypoints: &[Waypoint]) -> Markup {
-    let ships = ships.into_iter().map(|ship| {
-        let waypoint = spacetraders::get_ship_waypoint(ship.clone(), waypoints);
-        (ship, waypoint.clone())
-    });
-
+pub fn ships_html(ships: Vec<(Ship, ShipWaypoint)>) -> Markup {
     html! {
         ul class="ships [&>li]:mb-2" {
             @for (ship, waypoint) in ships {
