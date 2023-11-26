@@ -2,10 +2,11 @@ use spacedust::apis::agents_api::get_my_agent;
 use spacedust::apis::configuration::Configuration;
 use spacedust::apis::{contracts_api, fleet_api, systems_api};
 use spacedust::models::{
-    Agent, Contract, Market, PurchaseShipRequest, RefuelShipRequest, Ship, ShipType, Shipyard,
-    TradeSymbol, Waypoint, WaypointTraitSymbol,
+    Agent, Contract, ExtractResourcesRequest, ExtractionYield, Market, PurchaseShipRequest,
+    RefuelShipRequest, Ship, ShipType, Shipyard, TradeSymbol, Waypoint, WaypointTraitSymbol,
 };
 
+#[derive(Debug, Clone)]
 pub enum ShipOrShipSymbol {
     Ship(Ship),
     Symbol(String),
@@ -163,7 +164,12 @@ pub async fn get_ship_with_waypoint(
         ship.nav.system_symbol,
         waypoints_cache.entry_count()
     );
-    let waypoints = waypoints_cache.get(&ship.nav.system_symbol).await.unwrap();
+    let waypoints = system_waypoints(
+        conf,
+        ship.nav.system_symbol.clone(),
+        waypoints_cache.clone(),
+    )
+    .await;
     let waypoint = waypoints
         .iter()
         .find(|w| w.symbol == ship.nav.waypoint_symbol)
@@ -218,4 +224,14 @@ pub async fn ship_refuel(conf: &Configuration, symbol: ShipOrShipSymbol) -> Ship
         .unwrap();
 
     symbol.get(conf).await
+}
+
+pub async fn ship_extract(conf: &Configuration, ship: ShipOrShipSymbol) -> ExtractionYield {
+    let result =
+        *fleet_api::extract_resources(conf, &ship.symbol(), Some(ExtractResourcesRequest::new()))
+            .await
+            .unwrap()
+            .data;
+
+    *result.extraction.r#yield
 }

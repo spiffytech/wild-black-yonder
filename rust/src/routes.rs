@@ -132,6 +132,23 @@ pub async fn ship_buy(
 }
 
 #[derive(Deserialize, Debug)]
+pub struct ShipParams {
+    ship_symbol: String,
+}
+#[debug_handler]
+pub async fn ship(
+    State(state): State<AppStateShared>,
+    Path(params): Path<ShipParams>,
+) -> Result<impl IntoResponse, AppError> {
+    let conf = &state.conf;
+    let symbol = ShipOrShipSymbol::Symbol(params.ship_symbol);
+    let (ship, waypoint) =
+        spacetraders::get_ship_with_waypoint(conf, symbol, &state.waypoints_cache).await;
+
+    Ok(fragments::ship_html(ship, waypoint, None))
+}
+
+#[derive(Deserialize, Debug)]
 pub struct ShipNavChoicesParams {
     ship_symbol: String,
 }
@@ -215,7 +232,7 @@ pub async fn ship_dock(
     )
     .await;
 
-    Ok(fragments::ship_html(ship, waypoint))
+    Ok(fragments::ship_html(ship, waypoint, None))
 }
 
 #[derive(Deserialize, Debug)]
@@ -240,7 +257,7 @@ pub async fn ship_orbit(
     )
     .await;
 
-    Ok(fragments::ship_html(ship, ship_waypoint))
+    Ok(fragments::ship_html(ship, ship_waypoint, None))
 }
 
 #[derive(Deserialize, Debug)]
@@ -261,5 +278,24 @@ pub async fn ship_refuel(
     )
     .await;
 
-    Ok(fragments::ship_html(ship, waypoint))
+    Ok(fragments::ship_html(ship, waypoint, None))
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ShipExtractParams {
+    ship_symbol: String,
+}
+#[debug_handler]
+pub async fn ship_extract(
+    State(state): State<AppStateShared>,
+    Path(params): Path<ShipExtractParams>,
+) -> Result<impl IntoResponse, AppError> {
+    let conf = &state.conf;
+    let symbol = ShipOrShipSymbol::Symbol(params.ship_symbol);
+    let r#yield = spacetraders::ship_extract(conf, symbol.clone()).await;
+
+    let (ship, waypoint) =
+        spacetraders::get_ship_with_waypoint(conf, symbol, &state.waypoints_cache).await;
+
+    Ok(fragments::ship_html(ship, waypoint, Some(r#yield)))
 }

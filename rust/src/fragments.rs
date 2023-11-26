@@ -1,5 +1,5 @@
 use maud::{html, Markup};
-use spacedust::models::{Ship, ShipNavStatus, Shipyard, WaypointTraitSymbol};
+use spacedust::models::{ExtractionYield, Ship, ShipNavStatus, Shipyard, WaypointTraitSymbol};
 
 use crate::spacetraders::{ShipWaypoint, WaypointFeatures};
 
@@ -199,9 +199,17 @@ pub fn shipyard_html(shipyard: Shipyard) -> Markup {
     }
 }
 
-pub fn ship_html(ship: Ship, ship_waypoint: ShipWaypoint) -> Markup {
+pub fn ship_html(
+    ship: Ship,
+    ship_waypoint: ShipWaypoint,
+    extraction_yield: Option<ExtractionYield>,
+) -> Markup {
+    let on_cooldown = ship.cooldown.expiration.is_some();
+
     html! {
-        li class="ship" {
+        // The special class is necessary because unpoly needs some way to
+        // automatically target the element, otherwise the polling fails.
+        li class={"ship ship-" (ship.symbol)} up-poll[on_cooldown] up-interval="5000" up-source={"/ship/" (ship.symbol)} {
             div {
                 (format!(
                     "{} {} (Fuel {}/{}) {:?}",
@@ -211,6 +219,10 @@ pub fn ship_html(ship: Ship, ship_waypoint: ShipWaypoint) -> Markup {
                     ship.fuel.capacity,
                     ship.nav.status
                 ))
+
+                @if let Some(cooldown_expiration) = &ship.cooldown.expiration {
+                    (format!(" Cooldown: {}", from_now(cooldown_expiration.clone())))
+                }
 
                 @match ship.nav.status {
                     ShipNavStatus::InTransit => {
@@ -235,6 +247,16 @@ pub fn ship_html(ship: Ship, ship_waypoint: ShipWaypoint) -> Markup {
                     up-history="false"
                 {
                     i class="bi-airplane ml-2" {}
+                }
+
+                button
+                    disabled[on_cooldown]
+                    class=(if on_cooldown {"text-gray-400"} else {""})
+                    up-href={"/ship_nav/" (ship.symbol) "/extract"}
+                    up-method="post"
+                    up-target=".ship"
+                    {
+                    i class="bi-minecart-loaded" {}
                 }
             }
 
@@ -262,6 +284,23 @@ pub fn ship_html(ship: Ship, ship_waypoint: ShipWaypoint) -> Markup {
                     }
                 }
             }
+
+            @if ship.cargo.units > 0 {
+                details open {
+                    summary {"Cargo (" (ship.cargo.units) "/" (ship.cargo.capacity) ")"}
+                    ul class="flex gap-x-2" {
+                        @for cargo_item in ship.cargo.inventory {
+                            li {(cargo_item.name) " " (cargo_item.units)}
+                        }
+                    }
+                }
+            }
+
+            @if let Some(r#yield) = extraction_yield {
+                div {
+                    (format!("Extracted {} {}", r#yield.units, r#yield.symbol.to_string()))
+                }
+            }
         }
     }
 }
@@ -270,7 +309,7 @@ pub fn ships_html(ships: Vec<(Ship, ShipWaypoint)>) -> Markup {
     html! {
         ul class="ships [&>li]:mb-2" {
             @for (ship, waypoint) in ships {
-                (ship_html(ship, waypoint))
+                (ship_html(ship, waypoint, None))
             }
         }
     }

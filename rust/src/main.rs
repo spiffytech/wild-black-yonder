@@ -74,6 +74,7 @@ async fn main() {
             "/waypoints/:waypoint/buy_ship/:ship_type",
             post(routes::ship_buy),
         )
+        .route("/ship/:ship_symbol", get(routes::ship))
         .route(
             "/ship_nav/:ship_symbol/choices",
             get(routes::ship_nav_choices),
@@ -85,6 +86,7 @@ async fn main() {
         .route("/ship_nav/:ship_symbol/dock", post(routes::ship_dock))
         .route("/ship_nav/:ship_symbol/orbit", post(routes::ship_orbit))
         .route("/ship_nav/:ship_symbol/refuel", post(routes::ship_refuel))
+        .route("/ship_nav/:ship_symbol/extract", post(routes::ship_extract))
         .with_state(app_state)
         .fallback_service(static_assets_service)
         .layer(middleware::from_fn(caching_middleware));
