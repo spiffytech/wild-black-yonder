@@ -84,7 +84,7 @@ pub fn waypoint_html(
     nav_distance: Option<(&Ship, f64)>,
 ) -> Markup {
     html! {
-        div {
+        div id=(waypoint.symbol) {
             div class="capitalize flex gap-2 items-baseline" {
                 span class="text-lg font-semibold" {(waypoint.r#type.to_string().to_lowercase())}
                 span class="text-sm text-gray-700 italic" {
@@ -200,46 +200,54 @@ pub fn shipyard_html(shipyard: Shipyard) -> Markup {
 pub fn ship_html(ship: Ship) -> Markup {
     html! {
         li class="ship" {
-            (format!(
-                "{} {} (Fuel {}/{}) [{}] {:?}",
-                ship.symbol,
-                ship.registration.role.to_string(),
-                ship.fuel.current,
-                ship.fuel.capacity,
-                ship.nav.waypoint_symbol,
-                ship.nav.status
-            ))
+            div {
+                (format!(
+                    "{} {} (Fuel {}/{}) {:?}",
+                    ship.symbol,
+                    ship.registration.role.to_string(),
+                    ship.fuel.current,
+                    ship.fuel.capacity,
+                    ship.nav.status
+                ))
 
-            @match ship.nav.status {
-                ShipNavStatus::InTransit => {
-                    (format!(" ETA: {}", from_now(ship.nav.route.arrival)))
-                },
-                ShipNavStatus::InOrbit => {
-                    button up-href={"/ship_nav/" (ship.symbol) "/dock"} up-method="post" up-target=".ship" {
-                        i class="bi-arrow-bar-down" {}
-                    }
-                },
+                @match ship.nav.status {
+                    ShipNavStatus::InTransit => {
+                        (format!(" ETA: {}", from_now(ship.nav.route.arrival)))
+                    },
+                    ShipNavStatus::InOrbit => {
+                        button up-href={"/ship_nav/" (ship.symbol) "/dock"} up-method="post" up-target=".ship" {
+                            i class="bi-arrow-bar-down" {}
+                        }
+                    },
 
-                ShipNavStatus::Docked => {
-                    button up-href={"/ship_nav/" (ship.symbol) "/orbit"} up-method="post" up-target=".ship" {
-                        i class="bi-arrow-bar-up" {}
-                    }
-                },
+                    ShipNavStatus::Docked => {
+                        button up-href={"/ship_nav/" (ship.symbol) "/orbit"} up-method="post" up-target=".ship" {
+                            i class="bi-arrow-bar-up" {}
+                        }
+                    },
+                }
+
+                a
+                    href=(format!("/ship_nav/{ship_symbol}/choices", ship_symbol=ship.symbol))
+                    up-layer="new"
+                    up-history="false"
+                {
+                    i class="bi-airplane ml-2" {}
+                }
             }
 
-            a
-                href=(format!("/ship_nav/{ship_symbol}/choices", ship_symbol=ship.symbol))
-                up-layer="new"
-                up-history="false"
-            {
-                i class="bi-airplane ml-2" {}
+            div {
+                a
+                    href={"#" (ship.nav.waypoint_symbol)}
+                    class="underline decoration-dotted"
+                {(ship.nav.waypoint_symbol)}
             }
         }
     }
 }
 pub fn ships_html(ships: Vec<Ship>) -> Markup {
     html! {
-        ul class="ships" {
+        ul class="ships [&>li]:mb-2" {
             @for ship in ships {
                 (ship_html(ship))
             }
