@@ -134,7 +134,7 @@ pub fn waypoints_html(waypoints: Vec<spacedust::models::Waypoint>) -> Markup {
         .partition(|w| w.r#type == spacedust::models::WaypointType::FuelStation);
 
     let by_feature = waypoints;
-    let (shipyards, by_feature): (Vec<_>, Vec<_>) = by_feature.into_iter().partition(|w| {
+    let (shipyards, _by_feature): (Vec<_>, Vec<_>) = by_feature.into_iter().partition(|w| {
         w.traits
             .iter()
             .any(|t| t.symbol == WaypointTraitSymbol::Shipyard)
@@ -200,6 +200,21 @@ pub fn shipyard_html(shipyard: Shipyard) -> Markup {
 }
 
 pub fn ship_html(ship: Ship, waypoint: Waypoint) -> Markup {
+    enum WaypointFeatures {
+        Marketplace,
+        Fuel,
+    }
+    let mut waypoint_features: Vec<WaypointFeatures> = vec![];
+    waypoint
+        .traits
+        .iter()
+        .for_each(|trait_| match trait_.symbol {
+            WaypointTraitSymbol::Marketplace => {
+                waypoint_features.push(WaypointFeatures::Marketplace);
+            }
+            _ => {}
+        });
+
     html! {
         li class="ship" {
             div {
@@ -238,19 +253,31 @@ pub fn ship_html(ship: Ship, waypoint: Waypoint) -> Markup {
                 }
             }
 
-            div {
+            div class="flex gap-x-2" {
                 a
                     href={"#" (ship.nav.waypoint_symbol)}
                     class="underline decoration-dotted"
+
                 {(ship.nav.waypoint_symbol)}
+
+                @for waypoint_feature in waypoint_features {
+                    @match waypoint_feature {
+                        WaypointFeatures::Marketplace => {
+                            i title="Marketplace" class="bi-shop" {}
+                        },
+                        WaypointFeatures::Fuel => {
+                            i title="Fuel" class="bi-fuel-pump" {}
+                        },
+                    }
+                }
             }
         }
     }
 }
 
-pub fn ships_html(ships: Vec<Ship>, waypoints: &Vec<Waypoint>) -> Markup {
+pub fn ships_html(ships: Vec<Ship>, waypoints: &[Waypoint]) -> Markup {
     let ships = ships.into_iter().map(|ship| {
-        let waypoint = spacetraders::get_ship_waypoint(ship.clone(), &waypoints);
+        let waypoint = spacetraders::get_ship_waypoint(ship.clone(), waypoints);
         (ship, waypoint.clone())
     });
 
