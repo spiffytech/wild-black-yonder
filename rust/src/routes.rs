@@ -18,12 +18,14 @@ use crate::AppStateShared;
 
 #[debug_handler]
 pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppError> {
-    let conf = &state.conf.clone();
+    let conf = &state.conf;
     let agent = spacetraders::agent(conf).await;
 
     let contracts = spacetraders::get_my_contracts(conf).await;
 
-    let waypoints = spacetraders::system_waypoints(conf, state.waypoints_cache.clone()).await;
+    let system_symbol = spacetraders::agent_system(conf).await;
+    let waypoints =
+        spacetraders::system_waypoints(conf, system_symbol, state.waypoints_cache.clone()).await;
 
     let ships = spacetraders::get_my_ships(conf).await;
 
@@ -36,7 +38,7 @@ pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppErr
 
             div {
                 header class="text-lg font-semibold" {"My Ships"}
-                (fragments::ships_html(ships))
+                (fragments::ships_html(ships, &waypoints))
             }
 
             div {
@@ -68,8 +70,8 @@ pub async fn shipyard(
     State(state): State<AppStateShared>,
     Path(params): Path<ShipyardParams>,
 ) -> Result<Markup, AppError> {
-    let conf = state.conf.clone();
-    let shipyard = spacetraders::get_shipyard(&conf, &params.system, &params.waypoint).await;
+    let conf = &state.conf;
+    let shipyard = spacetraders::get_shipyard(conf, &params.system, &params.waypoint).await;
     //println!("Shipyard: {:?}", shipyard);
 
     Ok(page(
@@ -91,8 +93,8 @@ pub async fn ship_buy(
     State(state): State<AppStateShared>,
     Path(params): Path<ShipBuyParams>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conf = state.conf.clone();
-    spacetraders::ship_buy(&conf, params.ship_type, params.waypoint).await;
+    let conf = &state.conf;
+    spacetraders::ship_buy(conf, params.ship_type, params.waypoint).await;
 
     Ok(Redirect::to("/").into_response())
 }
@@ -106,13 +108,15 @@ pub async fn ship_nav_choices(
     State(state): State<AppStateShared>,
     Path(params): Path<ShipNavChoicesParams>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conf = state.conf.clone();
-    let ship = *fleet_api::get_my_ship(&conf, params.ship_symbol.as_str())
+    let conf = &state.conf;
+    let ship = *fleet_api::get_my_ship(conf, params.ship_symbol.as_str())
         .await
         .unwrap()
         .data;
-    let waypoints = spacetraders::system_waypoints(&conf, state.waypoints_cache.clone()).await;
-    let waypoints = spacetraders::get_ship_nav_choices(waypoints, &ship).await;
+    let system_symbol = spacetraders::agent_system(conf).await;
+    let waypoints =
+        spacetraders::system_waypoints(conf, system_symbol, state.waypoints_cache.clone()).await;
+    let waypoints = spacetraders::get_ship_nav_choices(&ship, waypoints).await;
 
     Ok(page(
         html! {
@@ -134,20 +138,20 @@ pub async fn ship_nav_go(
     State(state): State<AppStateShared>,
     Path(params): Path<ShipGoParams>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conf = state.conf.clone();
-    let ship = fleet_api::get_my_ship(&conf, params.ship_symbol.as_str())
+    let conf = &state.conf;
+    let ship = fleet_api::get_my_ship(conf, params.ship_symbol.as_str())
         .await
         .unwrap()
         .data;
 
     if ship.nav.status == ShipNavStatus::Docked {
-        fleet_api::orbit_ship(&conf, ship.symbol.as_str())
+        fleet_api::orbit_ship(conf, ship.symbol.as_str())
             .await
             .unwrap();
     }
 
     fleet_api::navigate_ship(
-        &conf,
+        conf,
         ship.symbol.as_str(),
         Some(NavigateShipRequest::new(params.waypoint)),
     )
@@ -166,18 +170,20 @@ pub async fn ship_dock(
     State(state): State<AppStateShared>,
     Path(params): Path<ShipDockParams>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conf = state.conf.clone();
+    let conf = &state.conf;
 
-    fleet_api::dock_ship(&conf, params.ship_symbol.as_str())
+    fleet_api::dock_ship(conf, params.ship_symbol.as_str())
         .await
         .unwrap();
 
-    let ship = *fleet_api::get_my_ship(&conf, params.ship_symbol.as_str())
-        .await
-        .unwrap()
-        .data;
+    let (ship, waypoint) = spacetraders::get_ship_with_waypoint(
+        conf,
+        params.ship_symbol.as_str(),
+        &state.waypoints_cache,
+    )
+    .await;
 
-    Ok(fragments::ship_html(ship))
+    Ok(fragments::ship_html(ship, waypoint))
 }
 
 #[derive(Deserialize, Debug)]
@@ -189,18 +195,20 @@ pub async fn ship_orbit(
     State(state): State<AppStateShared>,
     Path(params): Path<ShipOrbitParams>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conf = state.conf.clone();
+    let conf = &state.conf;
 
-    fleet_api::orbit_ship(&conf, params.ship_symbol.as_str())
+    fleet_api::orbit_ship(conf, params.ship_symbol.as_str())
         .await
         .unwrap();
 
-    let ship = *fleet_api::get_my_ship(&conf, params.ship_symbol.as_str())
-        .await
-        .unwrap()
-        .data;
+    let (ship, waypoint) = spacetraders::get_ship_with_waypoint(
+        conf,
+        params.ship_symbol.as_str(),
+        &state.waypoints_cache,
+    )
+    .await;
 
-    Ok(fragments::ship_html(ship))
+    Ok(fragments::ship_html(ship, waypoint))
 }
 
 pub struct AppError(anyhow::Error);

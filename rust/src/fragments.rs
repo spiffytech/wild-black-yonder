@@ -1,5 +1,7 @@
 use maud::{html, Markup};
-use spacedust::models::{Ship, ShipNavStatus, Shipyard, WaypointTraitSymbol};
+use spacedust::models::{Ship, ShipNavStatus, Shipyard, Waypoint, WaypointTraitSymbol};
+
+use crate::spacetraders;
 
 fn from_now(iso: String) -> String {
     let now = chrono::Utc::now();
@@ -197,7 +199,7 @@ pub fn shipyard_html(shipyard: Shipyard) -> Markup {
     }
 }
 
-pub fn ship_html(ship: Ship) -> Markup {
+pub fn ship_html(ship: Ship, waypoint: Waypoint) -> Markup {
     html! {
         li class="ship" {
             div {
@@ -245,11 +247,17 @@ pub fn ship_html(ship: Ship) -> Markup {
         }
     }
 }
-pub fn ships_html(ships: Vec<Ship>) -> Markup {
+
+pub fn ships_html(ships: Vec<Ship>, waypoints: &Vec<Waypoint>) -> Markup {
+    let ships = ships.into_iter().map(|ship| {
+        let waypoint = spacetraders::get_ship_waypoint(ship.clone(), &waypoints);
+        (ship, waypoint.clone())
+    });
+
     html! {
         ul class="ships [&>li]:mb-2" {
-            @for ship in ships {
-                (ship_html(ship))
+            @for (ship, waypoint) in ships {
+                (ship_html(ship, waypoint))
             }
         }
     }

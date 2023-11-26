@@ -15,39 +15,51 @@ pub async fn get_my_contracts(conf: &Configuration) -> Vec<Contract> {
         .data
 }
 
-pub async fn system_waypoints(conf: &Configuration, cache: crate::WaypointsCache) -> Vec<Waypoint> {
+pub async fn agent_system(conf: &Configuration) -> String {
     let agent = agent(conf).await;
-    let system = agent
+    agent
         .headquarters
         .split('-')
         .take(2)
         .collect::<Vec<&str>>()
-        .join("-");
-    println!("System: {}", system);
+        .join("-")
+}
 
-    if let Some(waypoints) = cache.get(&system).await {
-        return waypoints;
-    }
-
-    let mut waypoints: Vec<Waypoint> = vec![];
-    // API is 1-indexed
-    let mut page = 1;
-    loop {
-        let response =
-            systems_api::get_system_waypoints(conf, system.as_str(), Some(page), Some(20))
+pub async fn system_waypoints(
+    conf: &Configuration,
+    system_symbol: String,
+    waypoints_cache: crate::WaypointsCache,
+) -> Vec<Waypoint> {
+    let waypoints = waypoints_cache
+        .try_get_with::<_, ()>(system_symbol.clone(), async {
+            let mut waypoints: Vec<Waypoint> = vec![];
+            // API is 1-indexed
+            let mut page = 1;
+            loop {
+                let response = systems_api::get_system_waypoints(
+                    conf,
+                    system_symbol.as_str(),
+                    Some(page),
+                    Some(20),
+                )
                 .await
                 .unwrap();
-        waypoints.extend(response.data);
-        println!("Meta: {:?}", response.meta);
-        if response.meta.total <= waypoints.len() as i32 {
-            break;
-        }
-        page += 1;
-    }
-    println!("Waypoints count: {:?}", waypoints.len());
-    waypoints.sort_by_key(|w| w.r#type);
+                waypoints.extend(response.data);
+                if response.meta.total <= waypoints.len() as i32 {
+                    break;
+                }
+                page += 1;
+            }
+            waypoints.sort_by_key(|w| w.r#type);
+            Ok(waypoints)
+        })
+        .await
+        .unwrap();
 
-    cache.insert(system, waypoints.clone()).await;
+    // Not strictly necessary, but cache metadata is kinda eventually consistent
+    // unless we call this, and it goofs up my ability to debug stuff if I can't
+    // trust e.g., how many entries are in the cache.
+    waypoints_cache.run_pending_tasks().await;
 
     waypoints
 }
@@ -71,13 +83,10 @@ pub async fn ship_buy(conf: &Configuration, ship_type: ShipType, waypoint: Strin
 
 pub async fn get_my_ships(conf: &Configuration) -> Vec<Ship> {
     let response = fleet_api::get_my_ships(conf, None, None).await.unwrap();
-    for ship in response.data.iter() {
-        println!("Ship: {:#?}", ship);
-    }
     response.data
 }
 
-pub async fn get_ship_nav_choices(waypoints: Vec<Waypoint>, ship: &Ship) -> Vec<(Waypoint, f64)> {
+pub async fn get_ship_nav_choices(ship: &Ship, waypoints: Vec<Waypoint>) -> Vec<(Waypoint, f64)> {
     let ship_waypoint = &ship.nav.waypoint_symbol;
     let ship_location = waypoints
         .iter()
@@ -96,4 +105,33 @@ pub async fn get_ship_nav_choices(waypoints: Vec<Waypoint>, ship: &Ship) -> Vec<
 
     distances.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     distances
+}
+
+pub fn get_ship_waypoint(ship: Ship, waypoints: &[Waypoint]) -> Waypoint {
+    waypoints
+        .iter()
+        .find(|w| w.symbol == ship.nav.waypoint_symbol)
+        .unwrap()
+        .clone()
+}
+
+pub async fn get_ship_with_waypoint(
+    conf: &Configuration,
+    ship_symbol: &str,
+    waypoints_cache: &crate::WaypointsCache,
+) -> (Ship, Waypoint) {
+    let ship = *fleet_api::get_my_ship(conf, ship_symbol)
+        .await
+        .unwrap()
+        .data;
+
+    println!(
+        "Waypoint symbol: {}, cache entry count: {}",
+        ship.nav.system_symbol,
+        waypoints_cache.entry_count()
+    );
+    let waypoints = waypoints_cache.get(&ship.nav.system_symbol).await.unwrap();
+    let waypoint = get_ship_waypoint(ship.clone(), &waypoints);
+
+    (ship, waypoint)
 }
