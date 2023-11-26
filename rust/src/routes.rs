@@ -11,7 +11,7 @@ use axum::response::{IntoResponse, Redirect, Response};
 use serde::Deserialize;
 
 use crate::render::page;
-use crate::spacetraders::{self, ShipWaypoint};
+use crate::spacetraders::{self, ShipOrShipSymbol, ShipWaypoint};
 
 use crate::fragments;
 use crate::AppStateShared;
@@ -54,7 +54,7 @@ pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppErr
     for ship in ships {
         let ship_waypoint = spacetraders::get_ship_with_waypoint(
             conf,
-            ship.symbol.as_str(),
+            ShipOrShipSymbol::Symbol(ship.symbol),
             &state.waypoints_cache,
         )
         .await;
@@ -210,7 +210,7 @@ pub async fn ship_dock(
 
     let (ship, waypoint) = spacetraders::get_ship_with_waypoint(
         conf,
-        params.ship_symbol.as_str(),
+        ShipOrShipSymbol::Symbol(params.ship_symbol),
         &state.waypoints_cache,
     )
     .await;
@@ -235,7 +235,7 @@ pub async fn ship_orbit(
 
     let (ship, ship_waypoint) = spacetraders::get_ship_with_waypoint(
         conf,
-        params.ship_symbol.as_str(),
+        ShipOrShipSymbol::Symbol(params.ship_symbol),
         &state.waypoints_cache,
     )
     .await;
@@ -255,9 +255,12 @@ pub async fn ship_refuel(
     let conf = &state.conf;
     let ship = spacetraders::get_ship(conf, &params.ship_symbol).await;
     let ship = spacetraders::ship_refuel(conf, ship).await;
-    let (ship, waypoint) =
-        spacetraders::get_ship_with_waypoint(conf, ship.symbol.as_str(), &state.waypoints_cache)
-            .await;
+    let (ship, waypoint) = spacetraders::get_ship_with_waypoint(
+        conf,
+        ShipOrShipSymbol::Symbol(ship.symbol),
+        &state.waypoints_cache,
+    )
+    .await;
 
     Ok(fragments::ship_html(ship, waypoint))
 }

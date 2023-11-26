@@ -6,6 +6,11 @@ use spacedust::models::{
     TradeSymbol, Waypoint, WaypointTraitSymbol,
 };
 
+pub enum ShipOrShipSymbol {
+    Ship(Ship),
+    Symbol(String),
+}
+
 #[derive(Debug, PartialEq)]
 pub enum WaypointFeatures {
     Marketplace,
@@ -132,10 +137,13 @@ pub async fn get_ship(conf: &Configuration, ship_symbol: &str) -> Ship {
 
 pub async fn get_ship_with_waypoint(
     conf: &Configuration,
-    ship_symbol: &str,
+    ship: ShipOrShipSymbol,
     waypoints_cache: &crate::WaypointsCache,
 ) -> (Ship, ShipWaypoint) {
-    let ship = get_ship(conf, ship_symbol).await;
+    let ship = match ship {
+        ShipOrShipSymbol::Ship(ship) => ship,
+        ShipOrShipSymbol::Symbol(ship_symbol) => get_ship(conf, ship_symbol.as_str()).await,
+    };
 
     println!(
         "Waypoint symbol: {}, cache entry count: {}",
