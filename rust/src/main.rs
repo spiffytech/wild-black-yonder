@@ -84,6 +84,7 @@ async fn main() {
         )
         .route("/ship_nav/:ship_symbol/dock", post(routes::ship_dock))
         .route("/ship_nav/:ship_symbol/orbit", post(routes::ship_orbit))
+        .route("/ship_nav/:ship_symbol/refuel", post(routes::ship_refuel))
         .with_state(app_state)
         .fallback_service(static_assets_service)
         .layer(middleware::from_fn(caching_middleware));

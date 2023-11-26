@@ -2,8 +2,8 @@ use spacedust::apis::agents_api::get_my_agent;
 use spacedust::apis::configuration::Configuration;
 use spacedust::apis::{contracts_api, fleet_api, systems_api};
 use spacedust::models::{
-    Agent, Contract, Market, PurchaseShipRequest, Ship, ShipType, Shipyard, TradeSymbol, Waypoint,
-    WaypointTraitSymbol,
+    Agent, Contract, Market, PurchaseShipRequest, RefuelShipRequest, Ship, ShipType, Shipyard,
+    TradeSymbol, Waypoint, WaypointTraitSymbol,
 };
 
 #[derive(Debug, PartialEq)]
@@ -189,4 +189,12 @@ pub async fn get_ship_with_waypoint(
             market,
         },
     )
+}
+
+pub async fn ship_refuel(conf: &Configuration, ship: Ship) -> Ship {
+    fleet_api::refuel_ship(conf, &ship.symbol, Some(RefuelShipRequest::new()))
+        .await
+        .unwrap();
+
+    get_ship(conf, &ship.symbol).await
 }

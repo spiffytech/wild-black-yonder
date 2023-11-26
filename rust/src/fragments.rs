@@ -255,7 +255,9 @@ pub fn ship_html(ship: Ship, ship_waypoint: ShipWaypoint) -> Markup {
                         },
                         WaypointFeatures::Fuel => {
                             @let ship_fuel_full = ship.fuel.current == ship.fuel.capacity;
-                            i title="Fuel" class={"bi-fuel-pump " (if ship_fuel_full {"text-gray-400"} else {""})}  {}
+                            button up-href={"ship_nav/" (ship.symbol) "/refuel"} up-method="post" up-target=".ship" {
+                                i title="Fuel" class={"bi-fuel-pump " (if ship_fuel_full {"text-gray-400"} else {""})}  {}
+                            }
                         },
                     }
                 }

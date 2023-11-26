@@ -16,6 +16,28 @@ use crate::spacetraders::{self, ShipWaypoint};
 use crate::fragments;
 use crate::AppStateShared;
 
+pub struct AppError(anyhow::Error);
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Something went wrong: {}", self.0),
+        )
+            .into_response()
+    }
+}
+
+// This enables using `?` on functions that return `Result<_, anyhow::Error>` to turn them into
+// `Result<_, AppError>`. That way you don't need to do that manually.
+impl<E> From<E> for AppError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
+    }
+}
+
 #[debug_handler]
 pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppError> {
     let conf = &state.conf;
@@ -221,24 +243,21 @@ pub async fn ship_orbit(
     Ok(fragments::ship_html(ship, ship_waypoint))
 }
 
-pub struct AppError(anyhow::Error);
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
-        )
-            .into_response()
-    }
+#[derive(Deserialize, Debug)]
+pub struct ShipRefuelParams {
+    ship_symbol: String,
 }
+#[debug_handler]
+pub async fn ship_refuel(
+    State(state): State<AppStateShared>,
+    Path(params): Path<ShipRefuelParams>,
+) -> Result<impl IntoResponse, AppError> {
+    let conf = &state.conf;
+    let ship = spacetraders::get_ship(conf, &params.ship_symbol).await;
+    let ship = spacetraders::ship_refuel(conf, ship).await;
+    let (ship, waypoint) =
+        spacetraders::get_ship_with_waypoint(conf, ship.symbol.as_str(), &state.waypoints_cache)
+            .await;
 
-// This enables using `?` on functions that return `Result<_, anyhow::Error>` to turn them into
-// `Result<_, AppError>`. That way you don't need to do that manually.
-impl<E> From<E> for AppError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(err: E) -> Self {
-        Self(err.into())
-    }
+    Ok(fragments::ship_html(ship, waypoint))
 }
