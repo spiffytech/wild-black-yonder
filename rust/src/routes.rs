@@ -54,7 +54,7 @@ pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppErr
     for ship in ships {
         let ship_waypoint = spacetraders::get_ship_with_waypoint(
             conf,
-            ShipOrShipSymbol::Symbol(ship.symbol),
+            ShipOrShipSymbol::Ship(ship),
             &state.waypoints_cache,
         )
         .await;
@@ -257,7 +257,7 @@ pub async fn ship_refuel(
     let ship = spacetraders::ship_refuel(conf, ship).await;
     let (ship, waypoint) = spacetraders::get_ship_with_waypoint(
         conf,
-        ShipOrShipSymbol::Symbol(ship.symbol),
+        ShipOrShipSymbol::Ship(ship),
         &state.waypoints_cache,
     )
     .await;
