@@ -204,12 +204,17 @@ pub fn ship_html(
     ship_waypoint: ShipWaypoint,
     extraction_yield: Option<ExtractionYield>,
 ) -> Markup {
-    let on_cooldown = ship.cooldown.expiration.is_some();
+    let on_cooldown = ship.cooldown.expiration;
 
     html! {
         // The special class is necessary because unpoly needs some way to
         // automatically target the element, otherwise the polling fails.
-        li class={"ship ship-" (ship.symbol)} up-poll[on_cooldown] up-interval="5000" up-source={"/ship/" (ship.symbol)} {
+        li
+            class={"ship ship-" (ship.symbol)}
+            up-poll[on_cooldown.is_some()]
+            up-interval=[on_cooldown.clone().map(|_| "5000")]
+            up-source=[on_cooldown.clone().map(|_| format!("/ship/{}", ship.symbol))]
+        {
             div {
                 (format!(
                     "{} {} (Fuel {}/{}) {:?}",
@@ -220,7 +225,7 @@ pub fn ship_html(
                     ship.nav.status
                 ))
 
-                @if let Some(cooldown_expiration) = &ship.cooldown.expiration {
+                @if let Some(cooldown_expiration) = on_cooldown.clone() {
                     (format!(" Cooldown: {}", from_now(cooldown_expiration.clone())))
                 }
 
@@ -250,8 +255,8 @@ pub fn ship_html(
                 }
 
                 button
-                    disabled[on_cooldown]
-                    class=(if on_cooldown {"text-gray-400"} else {""})
+                    disabled[on_cooldown.is_some()]
+                    class=(on_cooldown.clone().map_or("", |_| "text-gray-400"))
                     up-href={"/ship_nav/" (ship.symbol) "/extract"}
                     up-method="post"
                     up-target=".ship"
@@ -267,7 +272,7 @@ pub fn ship_html(
 
                 {(ship.nav.waypoint_symbol)}
 
-                @for feature in ship_waypoint.features {
+                @for feature in ship_waypoint.features.iter() {
                     @match feature {
                         WaypointFeatures::Marketplace => {
                             i title="Marketplace" class="bi-shop" {}
@@ -291,6 +296,18 @@ pub fn ship_html(
                     ul class="flex gap-x-2" {
                         @for cargo_item in ship.cargo.inventory {
                             li {(cargo_item.name) " " (cargo_item.units)}
+                        }
+                    }
+
+                    @if ship_waypoint.features.contains(&WaypointFeatures::Marketplace) {
+                        button
+                            up-href={"/ship_cargo/" (ship.symbol) "/dump"}
+                            up-method="post"
+                            up-target=".ship"
+                            class="flex gap-x-1 items-baseline"
+                        {
+                            i class="bi-upload" {}
+                            "Dump cargo"
                         }
                     }
                 }

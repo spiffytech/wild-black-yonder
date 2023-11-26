@@ -3,7 +3,8 @@ use spacedust::apis::configuration::Configuration;
 use spacedust::apis::{contracts_api, fleet_api, systems_api};
 use spacedust::models::{
     Agent, Contract, ExtractResourcesRequest, ExtractionYield, Market, PurchaseShipRequest,
-    RefuelShipRequest, Ship, ShipType, Shipyard, TradeSymbol, Waypoint, WaypointTraitSymbol,
+    RefuelShipRequest, SellCargoRequest, Ship, ShipType, Shipyard, TradeSymbol, Waypoint,
+    WaypointTraitSymbol,
 };
 
 #[derive(Debug, Clone)]
@@ -234,4 +235,39 @@ pub async fn ship_extract(conf: &Configuration, ship: ShipOrShipSymbol) -> Extra
             .data;
 
     *result.extraction.r#yield
+}
+
+pub async fn ship_cargo_dump(conf: &Configuration, ship: ShipOrShipSymbol) {
+    let ship = ship.get(conf).await;
+
+    // Marketplaces only buy certain goods, and API calls will fail if we try to
+    // sell anything else
+    let marketplace =
+        *systems_api::get_market(conf, &ship.nav.system_symbol, &ship.nav.waypoint_symbol)
+            .await
+            .unwrap()
+            .data;
+    let goods_sellable = marketplace
+        .imports
+        .iter()
+        .map(|i| i.symbol)
+        .collect::<Vec<TradeSymbol>>();
+
+    let inventory = ship.cargo.inventory;
+
+    for item in inventory {
+        println!("Checking if {:?} is sellable", item.symbol);
+        if !goods_sellable.contains(&item.symbol) {
+            continue;
+        }
+        println!("Selling {} units of {:?}", item.units, item.symbol);
+
+        fleet_api::sell_cargo(
+            conf,
+            &ship.symbol,
+            Some(SellCargoRequest::new(item.symbol, item.units)),
+        )
+        .await
+        .unwrap();
+    }
 }

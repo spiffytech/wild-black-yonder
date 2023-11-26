@@ -158,11 +158,11 @@ pub async fn ship_nav_choices(
     Path(params): Path<ShipNavChoicesParams>,
 ) -> Result<impl IntoResponse, AppError> {
     let conf = &state.conf;
-    let ship = *fleet_api::get_my_ship(conf, params.ship_symbol.as_str())
-        .await
-        .unwrap()
-        .data;
+
+    let ship = ShipOrShipSymbol::Symbol(params.ship_symbol).get(conf).await;
+
     let system_symbol = spacetraders::agent_system(conf).await;
+
     let waypoints =
         spacetraders::system_waypoints(conf, system_symbol, state.waypoints_cache.clone()).await;
     let waypoints = spacetraders::get_ship_nav_choices(&ship, waypoints).await;
@@ -298,4 +298,24 @@ pub async fn ship_extract(
         spacetraders::get_ship_with_waypoint(conf, symbol, &state.waypoints_cache).await;
 
     Ok(fragments::ship_html(ship, waypoint, Some(r#yield)))
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ShipCargoDumpParams {
+    ship_symbol: String,
+}
+#[debug_handler]
+pub async fn ship_cargo_dump(
+    State(state): State<AppStateShared>,
+    Path(params): Path<ShipCargoDumpParams>,
+) -> Result<impl IntoResponse, AppError> {
+    let conf = &state.conf;
+
+    let symbol = ShipOrShipSymbol::Symbol(params.ship_symbol);
+    spacetraders::ship_cargo_dump(conf, symbol.clone()).await;
+
+    let (ship, waypoint) =
+        spacetraders::get_ship_with_waypoint(conf, symbol, &state.waypoints_cache).await;
+
+    Ok(fragments::ship_html(ship, waypoint, None))
 }
