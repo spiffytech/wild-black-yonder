@@ -157,6 +157,52 @@ pub async fn ship_nav_go(
     Ok(Redirect::to("/").into_response())
 }
 
+#[derive(Deserialize, Debug)]
+pub struct ShipDockParams {
+    ship_symbol: String,
+}
+#[debug_handler]
+pub async fn ship_dock(
+    State(state): State<AppStateShared>,
+    Path(params): Path<ShipDockParams>,
+) -> Result<impl IntoResponse, AppError> {
+    let conf = state.conf.clone();
+
+    fleet_api::dock_ship(&conf, params.ship_symbol.as_str())
+        .await
+        .unwrap();
+
+    let ship = *fleet_api::get_my_ship(&conf, params.ship_symbol.as_str())
+        .await
+        .unwrap()
+        .data;
+
+    Ok(fragments::ship_html(ship))
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ShipOrbitParams {
+    ship_symbol: String,
+}
+#[debug_handler]
+pub async fn ship_orbit(
+    State(state): State<AppStateShared>,
+    Path(params): Path<ShipOrbitParams>,
+) -> Result<impl IntoResponse, AppError> {
+    let conf = state.conf.clone();
+
+    fleet_api::orbit_ship(&conf, params.ship_symbol.as_str())
+        .await
+        .unwrap();
+
+    let ship = *fleet_api::get_my_ship(&conf, params.ship_symbol.as_str())
+        .await
+        .unwrap()
+        .data;
+
+    Ok(fragments::ship_html(ship))
+}
+
 pub struct AppError(anyhow::Error);
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {

@@ -78,7 +78,12 @@ pub async fn get_my_ships(conf: &Configuration) -> Vec<Ship> {
 }
 
 pub async fn get_ship_nav_choices(waypoints: Vec<Waypoint>, ship: &Ship) -> Vec<(Waypoint, f64)> {
-    let ship_location = &ship.nav.route.origin;
+    let ship_waypoint = &ship.nav.waypoint_symbol;
+    let ship_location = waypoints
+        .iter()
+        .find(|w| w.symbol == *ship_waypoint)
+        .expect("Ship not at waypoint")
+        .clone();
 
     let mut distances = waypoints
         .into_iter()

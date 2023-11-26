@@ -197,25 +197,51 @@ pub fn shipyard_html(shipyard: Shipyard) -> Markup {
     }
 }
 
+pub fn ship_html(ship: Ship) -> Markup {
+    html! {
+        li class="ship" {
+            (format!(
+                "{} {} (Fuel {}/{}) [{}] {:?}",
+                ship.symbol,
+                ship.registration.role.to_string(),
+                ship.fuel.current,
+                ship.fuel.capacity,
+                ship.nav.waypoint_symbol,
+                ship.nav.status
+            ))
+
+            @match ship.nav.status {
+                ShipNavStatus::InTransit => {
+                    (format!(" ETA: {}", from_now(ship.nav.route.arrival)))
+                },
+                ShipNavStatus::InOrbit => {
+                    button up-href={"/ship_nav/" (ship.symbol) "/dock"} up-method="post" up-target=".ship" {
+                        i class="bi-arrow-bar-down" {}
+                    }
+                },
+
+                ShipNavStatus::Docked => {
+                    button up-href={"/ship_nav/" (ship.symbol) "/orbit"} up-method="post" up-target=".ship" {
+                        i class="bi-arrow-bar-up" {}
+                    }
+                },
+            }
+
+            a
+                href=(format!("/ship_nav/{ship_symbol}/choices", ship_symbol=ship.symbol))
+                up-layer="new"
+                up-history="false"
+            {
+                i class="bi-airplane ml-2" {}
+            }
+        }
+    }
+}
 pub fn ships_html(ships: Vec<Ship>) -> Markup {
     html! {
-        ul {
+        ul class="ships" {
             @for ship in ships {
-                li {
-                    (format!("{} {} (Fuel {}/{}) {:?}", ship.symbol, ship.registration.role.to_string(), ship.fuel.current, ship.fuel.capacity, ship.nav.status))
-
-                    @if ship.nav.status == ShipNavStatus::InTransit {
-                        (format!(" ETA: {}", from_now(ship.nav.route.arrival)))
-                    }
-
-                    a
-                        href=(format!("/ship_nav/{ship_symbol}/choices", ship_symbol=ship.symbol))
-                        up-layer="new"
-                        up-history="false"
-                    {
-                        i class="bi-airplane ml-2" {}
-                    }
-                }
+                (ship_html(ship))
             }
         }
     }
