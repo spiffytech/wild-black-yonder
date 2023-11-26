@@ -15,7 +15,7 @@ pub async fn get_my_contracts(conf: &Configuration) -> Vec<Contract> {
         .data
 }
 
-pub async fn system_waypoints(conf: &Configuration) -> Vec<Waypoint> {
+pub async fn system_waypoints(conf: &Configuration, cache: crate::WaypointsCache) -> Vec<Waypoint> {
     let agent = agent(conf).await;
     let system = agent
         .headquarters
@@ -24,6 +24,11 @@ pub async fn system_waypoints(conf: &Configuration) -> Vec<Waypoint> {
         .collect::<Vec<&str>>()
         .join("-");
     println!("System: {}", system);
+
+    if let Some(waypoints) = cache.get(&system).await {
+        return waypoints;
+    }
+
     let mut waypoints: Vec<Waypoint> = vec![];
     // API is 1-indexed
     let mut page = 1;
@@ -41,6 +46,9 @@ pub async fn system_waypoints(conf: &Configuration) -> Vec<Waypoint> {
     }
     println!("Waypoints count: {:?}", waypoints.len());
     waypoints.sort_by_key(|w| w.r#type);
+
+    cache.insert(system, waypoints.clone()).await;
+
     waypoints
 }
 

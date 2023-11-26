@@ -1,9 +1,5 @@
-use parking_lot::Mutex;
-use std::sync::Arc;
-
 use maud::{html, Markup};
 
-use spacedust::apis::configuration::Configuration;
 use spacedust::apis::fleet_api;
 use spacedust::models::{NavigateShipRequest, ShipNavStatus, ShipType};
 
@@ -18,15 +14,16 @@ use crate::render::page;
 use crate::spacetraders;
 
 use crate::fragments;
+use crate::AppStateShared;
 
 #[debug_handler]
-pub async fn index(State(state): State<Arc<Mutex<Configuration>>>) -> Result<Markup, AppError> {
-    let conf = &state.lock().clone();
+pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppError> {
+    let conf = &state.conf.clone();
     let agent = spacetraders::agent(conf).await;
 
     let contracts = spacetraders::get_my_contracts(conf).await;
 
-    let waypoints = spacetraders::system_waypoints(conf).await;
+    let waypoints = spacetraders::system_waypoints(conf, state.waypoints_cache.clone()).await;
 
     let ships = spacetraders::get_my_ships(conf).await;
 
@@ -68,10 +65,10 @@ pub struct ShipyardParams {
 }
 #[debug_handler]
 pub async fn shipyard(
-    State(state): State<Arc<Mutex<Configuration>>>,
+    State(state): State<AppStateShared>,
     Path(params): Path<ShipyardParams>,
 ) -> Result<Markup, AppError> {
-    let conf = state.lock().clone();
+    let conf = state.conf.clone();
     let shipyard = spacetraders::get_shipyard(&conf, &params.system, &params.waypoint).await;
     //println!("Shipyard: {:?}", shipyard);
 
@@ -91,10 +88,10 @@ pub struct ShipBuyParams {
 }
 #[debug_handler]
 pub async fn ship_buy(
-    State(state): State<Arc<Mutex<Configuration>>>,
+    State(state): State<AppStateShared>,
     Path(params): Path<ShipBuyParams>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conf = state.lock().clone();
+    let conf = state.conf.clone();
     spacetraders::ship_buy(&conf, params.ship_type, params.waypoint).await;
 
     Ok(Redirect::to("/").into_response())
@@ -106,15 +103,15 @@ pub struct ShipNavChoicesParams {
 }
 #[debug_handler]
 pub async fn ship_nav_choices(
-    State(state): State<Arc<Mutex<Configuration>>>,
+    State(state): State<AppStateShared>,
     Path(params): Path<ShipNavChoicesParams>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conf = state.lock().clone();
+    let conf = state.conf.clone();
     let ship = *fleet_api::get_my_ship(&conf, params.ship_symbol.as_str())
         .await
         .unwrap()
         .data;
-    let waypoints = spacetraders::system_waypoints(&conf).await;
+    let waypoints = spacetraders::system_waypoints(&conf, state.waypoints_cache.clone()).await;
     let waypoints = spacetraders::get_ship_nav_choices(waypoints, &ship).await;
 
     Ok(page(
@@ -134,10 +131,10 @@ pub struct ShipGoParams {
 }
 #[debug_handler]
 pub async fn ship_nav_go(
-    State(state): State<Arc<Mutex<Configuration>>>,
+    State(state): State<AppStateShared>,
     Path(params): Path<ShipGoParams>,
 ) -> Result<impl IntoResponse, AppError> {
-    let conf = state.lock().clone();
+    let conf = state.conf.clone();
     let ship = fleet_api::get_my_ship(&conf, params.ship_symbol.as_str())
         .await
         .unwrap()

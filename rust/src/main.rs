@@ -1,7 +1,10 @@
-use parking_lot::Mutex;
+use moka::future::Cache;
+//use parking_lot::Mutex;
 use std::sync::Arc;
+use std::time::Duration;
 
 use spacedust::apis::configuration::Configuration;
+use spacedust::models::Waypoint;
 
 use axum::middleware::{self, Next};
 use axum::{http::Request, response::Response};
@@ -37,15 +40,32 @@ async fn caching_middleware<B>(request: Request<B>, next: Next<B>) -> Response {
     response
 }
 
+pub type WaypointsCache = Cache<String, Vec<Waypoint>>;
+pub struct AppState {
+    conf: Configuration,
+    waypoints_cache: WaypointsCache,
+}
+
+pub type AppStateShared = Arc<AppState>;
+
 #[tokio::main]
 async fn main() {
     let static_assets_service = ServeDir::new("public");
 
-    let conf = Arc::new(Mutex::new({
+    let conf = {
         let mut conf = Configuration::new();
         conf.bearer_access_token = Some("eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZGVudGlmaWVyIjoiQURNSU4iLCJ2ZXJzaW9uIjoidjIuMS4yIiwicmVzZXRfZGF0ZSI6IjIwMjMtMTEtMTgiLCJpYXQiOjE3MDA1MzA3OTMsInN1YiI6ImFnZW50LXRva2VuIn0.UUsEfJX8ASMpb9Ag2EY0PN9GaH3w2HUvAhxYlKSf-cqX66P6r8MUFSGYvWyLpQiNSdtVLiiYfGEeSpU0isp6ekjL9FeYWYeEGKZxBlm5dX1G8hN8-O_DbSvq85kDHr8hlSUT04dS4dIKDMSkBbCu1x0PD1gp0JC4uGVBPpQMZnFFIaAjNXr17q3Zoqf0FVWqTIRwgC_fE0asyslGv_EfsGta6RBYkY2gE2i_y4xkaKd-3fP7CU-tI4x9N7A7-p3rCN5kZ3FCghBKoVhuCnEmPVv8A16kz21i-cPMTLtLJqe4XZL4tH3HEB8CUgirS1R9ahjSHHLeo_eWtQq0nL-66w".to_string());
         conf
-    }));
+    };
+
+    let waypoints_cache: WaypointsCache = Cache::builder()
+        .time_to_live(Duration::from_secs(60 * 5))
+        .build();
+
+    let app_state = Arc::new(AppState {
+        conf,
+        waypoints_cache,
+    });
 
     let app = Router::new()
         .route("/", get(routes::index))
@@ -62,7 +82,7 @@ async fn main() {
             "/ship_nav/:ship_symbol/go/:waypoint",
             post(routes::ship_nav_go),
         )
-        .with_state(conf)
+        .with_state(app_state)
         .fallback_service(static_assets_service)
         .layer(middleware::from_fn(caching_middleware));
 
