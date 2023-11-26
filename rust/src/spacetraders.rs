@@ -2,9 +2,11 @@ use spacedust::apis::agents_api::get_my_agent;
 use spacedust::apis::configuration::Configuration;
 use spacedust::apis::{contracts_api, fleet_api, systems_api};
 use spacedust::models::{
-    Agent, Contract, PurchaseShipRequest, Ship, ShipType, Shipyard, Waypoint, WaypointTraitSymbol,
+    Agent, Contract, Market, PurchaseShipRequest, Ship, ShipType, Shipyard, TradeSymbol, Waypoint,
+    WaypointTraitSymbol,
 };
 
+#[derive(Debug, PartialEq)]
 pub enum WaypointFeatures {
     Marketplace,
     Shipyard,
@@ -14,6 +16,7 @@ pub enum WaypointFeatures {
 pub struct ShipWaypoint {
     pub waypoint: Waypoint,
     pub features: Vec<WaypointFeatures>,
+    pub market: Option<Market>,
 }
 
 pub async fn agent(conf: &Configuration) -> Agent {
@@ -160,11 +163,30 @@ pub async fn get_ship_with_waypoint(
             _ => {}
         });
 
+    let mut market: Option<Market> = None;
+    if waypoint_features.contains(&WaypointFeatures::Marketplace) {
+        let market_ = *systems_api::get_market(conf, &waypoint.system_symbol, &waypoint.symbol)
+            .await
+            .unwrap()
+            .data;
+
+        if market_
+            .exchange
+            .iter()
+            .any(|e| e.symbol == TradeSymbol::Fuel)
+        {
+            waypoint_features.push(WaypointFeatures::Fuel);
+        }
+
+        market = Some(market_);
+    }
+
     (
         ship,
         ShipWaypoint {
             waypoint,
             features: waypoint_features,
+            market,
         },
     )
 }
