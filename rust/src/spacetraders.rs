@@ -11,6 +11,15 @@ pub enum ShipOrShipSymbol {
     Symbol(String),
 }
 
+impl ShipOrShipSymbol {
+    pub async fn get(&self, conf: &Configuration) -> Ship {
+        match self {
+            ShipOrShipSymbol::Ship(ship) => ship.clone(),
+            ShipOrShipSymbol::Symbol(ship_symbol) => get_ship(conf, ship_symbol.as_str()).await,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum WaypointFeatures {
     Marketplace,
@@ -140,10 +149,7 @@ pub async fn get_ship_with_waypoint(
     ship: ShipOrShipSymbol,
     waypoints_cache: &crate::WaypointsCache,
 ) -> (Ship, ShipWaypoint) {
-    let ship = match ship {
-        ShipOrShipSymbol::Ship(ship) => ship,
-        ShipOrShipSymbol::Symbol(ship_symbol) => get_ship(conf, ship_symbol.as_str()).await,
-    };
+    let ship = ship.get(conf).await;
 
     println!(
         "Waypoint symbol: {}, cache entry count: {}",
