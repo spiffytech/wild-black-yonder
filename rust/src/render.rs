@@ -77,6 +77,9 @@ pub fn page(content: Markup, scripts: Option<Markup>) -> Markup {
             link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/unpoly@3.5.2/unpoly.min.css";
             script {"up.poly.enable()"}
 
+            script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.27.0/cytoscape.min.js" integrity="sha512-ZNCw/dHSJygOg60ih5fI0f2RKqa8EeVm2ivm3PcrD6SEv2WzK8VJoe5IxS4QzvLcaSIQeaxgZMRCW01QlVJTZA==" crossorigin="anonymous" referrerpolicy="no-referrer" {}
+            script src="/map.js" {}
+
             script{(PreEscaped(r#"
             document.body.addEventListener('htmx:responseError', function (evt) {
                 document.querySelector("main").innerText =

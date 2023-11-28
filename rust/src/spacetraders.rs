@@ -7,6 +7,8 @@ use spacedust::models::{
     WaypointTraitSymbol,
 };
 
+use serde_json::json;
+
 #[derive(Debug, Clone)]
 pub enum ShipOrShipSymbol {
     Ship(Ship),
@@ -270,4 +272,23 @@ pub async fn ship_cargo_dump(conf: &Configuration, ship: ShipOrShipSymbol) {
         .await
         .unwrap();
     }
+}
+
+pub fn waypoint_distances(waypoints: Vec<Waypoint>) -> String {
+    let nodes = waypoints
+        .iter()
+        .map(|w| {
+            json!({
+                "data": {
+                    "id": w.symbol.clone(),
+                },
+                "position": {
+                    "x": w.x,
+                    "y": w.y,
+                },
+                "classes": ["waypoint"]
+            })
+        })
+        .collect::<Vec<_>>();
+    serde_json::to_string(&nodes).unwrap()
 }

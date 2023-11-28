@@ -1314,6 +1314,7 @@ dependencies = [
  "moka",
  "parking_lot",
  "serde",
+ "serde_json",
  "space-traders",
  "spacedust",
  "tokio",

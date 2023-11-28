@@ -61,8 +61,12 @@ pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppErr
         ships_with_waypoints.push(ship_waypoint);
     }
 
+    let map_json = spacetraders::waypoint_distances(waypoints.clone());
+
     Ok(page(
         html! {
+            div class="map w-full h-96" up-data=(map_json) {}
+
             div {
                 header class="text-lg font-semibold" {"Contracts"}
                 (fragments::agent_html(agent))
