@@ -275,40 +275,33 @@ pub async fn ship_cargo_dump(conf: &Configuration, ship: ShipOrShipSymbol) {
 }
 
 pub fn map_data(waypoints: Vec<Waypoint>, ships: Vec<Ship>) -> String {
-    let mut waypoint_nodes = waypoints
-        .iter()
-        .map(|waypoint| {
-            json!({
+    let mut nodes: Vec<JsonValue> = vec![];
+    let mut edges: Vec<JsonValue> = vec![];
+
+    waypoints.iter().for_each(|waypoint| {
+        nodes.push(json!({
+            "data": {
+                "id": waypoint.symbol.clone(),
+            },
+            "position": {
+                "x": waypoint.x,
+                "y": waypoint.y,
+            },
+            "classes": ["waypoint", waypoint.r#type.to_string().to_lowercase()]
+        }));
+
+        waypoint.orbitals.iter().for_each(|orbital| {
+            edges.push(json!({
                 "data": {
-                    "id": waypoint.symbol.clone(),
+                    "id": format!("{}-{}", waypoint.symbol, orbital.symbol),
+                    "source": waypoint.symbol,
+                    "target": orbital.symbol,
                 },
-                "position": {
-                    "x": waypoint.x,
-                    "y": waypoint.y,
-                },
-                "classes": ["waypoint", waypoint.r#type.to_string().to_lowercase()]
-            })
+                "classes": ["orbital"]
+            }));
         })
-        .collect::<Vec<_>>();
+    });
 
-    let mut waypoint_edges = waypoints
-        .iter()
-        .flat_map(|waypoint| {
-            waypoint.orbitals.iter().map(|orbital| {
-                json!({
-                    "data": {
-                        "id": format!("{}-{}", waypoint.symbol, orbital.symbol),
-                        "source": waypoint.symbol,
-                        "target": orbital.symbol,
-                    },
-                    "classes": ["orbital"]
-                })
-            })
-        })
-        .collect::<Vec<_>>();
-
-    let mut ship_nodes: Vec<JsonValue> = vec![];
-    let mut ship_edges: Vec<JsonValue> = vec![];
     ships.iter().for_each(|ship| {
         let ship_waypoint_symbol = &ship.nav.waypoint_symbol;
         let ship_waypoint = waypoints
@@ -317,7 +310,7 @@ pub fn map_data(waypoints: Vec<Waypoint>, ships: Vec<Ship>) -> String {
             .expect("Ship not at waypoint")
             .clone();
 
-        ship_nodes.push(json!({
+        nodes.push(json!({
             "data": {
                 "id": ship.symbol.clone(),
             },
@@ -327,7 +320,7 @@ pub fn map_data(waypoints: Vec<Waypoint>, ships: Vec<Ship>) -> String {
             },
             "classes": ["ship"]
         }));
-        ship_edges.push(json!({
+        edges.push(json!({
             "data": {
                 "id": format!("{}-{}", ship.symbol, ship_waypoint_symbol),
                 "source": ship.symbol,
@@ -337,14 +330,9 @@ pub fn map_data(waypoints: Vec<Waypoint>, ships: Vec<Ship>) -> String {
         }));
     });
 
-    waypoint_nodes.extend(ship_nodes);
-    let map_nodes = waypoint_nodes;
-    waypoint_edges.extend(ship_edges);
-    let map_edges = waypoint_edges;
-
     serde_json::to_string(&json!({
-        "nodes": &map_nodes,
-        "edges": &map_edges
+        "nodes": &nodes,
+        "edges": &edges
     }))
     .unwrap()
 }
