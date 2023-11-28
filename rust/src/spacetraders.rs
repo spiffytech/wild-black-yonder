@@ -4,7 +4,7 @@ use spacedust::apis::{contracts_api, fleet_api, systems_api};
 use spacedust::models::{
     Agent, Contract, ExtractResourcesRequest, ExtractionYield, Market, PurchaseShipRequest,
     RefuelShipRequest, SellCargoRequest, Ship, ShipType, Shipyard, TradeSymbol, Waypoint,
-    WaypointTraitSymbol,
+    WaypointTraitSymbol, WaypointType,
 };
 
 use serde_json::json;
@@ -277,18 +277,43 @@ pub async fn ship_cargo_dump(conf: &Configuration, ship: ShipOrShipSymbol) {
 pub fn waypoint_distances(waypoints: Vec<Waypoint>) -> String {
     let nodes = waypoints
         .iter()
-        .map(|w| {
+        //.filter(|waypoint| waypoint.r#type == WaypointType::Moon)
+        .map(|waypoint| {
             json!({
                 "data": {
-                    "id": w.symbol.clone(),
+                    "id": waypoint.symbol.clone(),
                 },
                 "position": {
-                    "x": w.x,
-                    "y": w.y,
+                    //"x": if waypoint.r#type != WaypointType::Moon {None} else {Some(waypoint.x)},
+                    //"y": if waypoint.r#type != WaypointType::Moon {None} else {Some(waypoint.y)},
+                    "x": waypoint.x,
+                    "y": waypoint.y,
                 },
-                "classes": ["waypoint"]
+                "classes": ["waypoint", waypoint.r#type.to_string().to_lowercase()]
             })
         })
         .collect::<Vec<_>>();
-    serde_json::to_string(&nodes).unwrap()
+
+    let edges = waypoints
+        .iter()
+        //.filter(|waypoint| waypoint.r#type == WaypointType::Moon)
+        .flat_map(|waypoint| {
+            waypoint.orbitals.iter().map(|orbital| {
+                json!({
+                    "data": {
+                        "id": format!("{}-{}", waypoint.symbol, orbital.symbol),
+                        "source": waypoint.symbol,
+                        "target": orbital.symbol,
+                    },
+                    "classes": ["orbital"]
+                })
+            })
+        })
+        .collect::<Vec<_>>();
+
+    serde_json::to_string(&json!({
+        "nodes": &nodes,
+        "edges": &edges
+    }))
+    .unwrap()
 }

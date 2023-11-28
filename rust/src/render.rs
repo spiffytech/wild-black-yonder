@@ -75,9 +75,13 @@ pub fn page(content: Markup, scripts: Option<Markup>) -> Markup {
 
             script src="https://cdn.jsdelivr.net/npm/unpoly@3.5.2/unpoly.min.js" {}
             link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/unpoly@3.5.2/unpoly.min.css";
-            script {"up.poly.enable()"}
+            script {"up.log.enable()"}
 
             script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.27.0/cytoscape.min.js" integrity="sha512-ZNCw/dHSJygOg60ih5fI0f2RKqa8EeVm2ivm3PcrD6SEv2WzK8VJoe5IxS4QzvLcaSIQeaxgZMRCW01QlVJTZA==" crossorigin="anonymous" referrerpolicy="no-referrer" {}
+            script src="https://unpkg.com/layout-base/layout-base.js" {}
+            script src="https://unpkg.com/cose-base/cose-base.js" {}
+            script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js" {}
+            script src="https://unpkg.com/cytoscape-cola/cytoscape-cola.js" {}
             script src="/map.js" {}
 
             script{(PreEscaped(r#"

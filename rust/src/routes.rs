@@ -65,7 +65,7 @@ pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppErr
 
     Ok(page(
         html! {
-            div class="map w-full h-96" up-data=(map_json) {}
+            div class="map w-full h-96 border-2 border-gray-700 rounded-lg" up-data=(map_json) {}
 
             div {
                 header class="text-lg font-semibold" {"Contracts"}
