@@ -50,6 +50,9 @@ pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppErr
         spacetraders::system_waypoints(conf, system_symbol, state.waypoints_cache.clone()).await;
 
     let ships = spacetraders::get_my_ships(conf).await;
+
+    let map_json = spacetraders::map_data(waypoints.clone(), ships.clone());
+
     let mut ships_with_waypoints: Vec<(Ship, ShipWaypoint)> = vec![];
     for ship in ships {
         let ship_waypoint = spacetraders::get_ship_with_waypoint(
@@ -60,8 +63,6 @@ pub async fn index(State(state): State<AppStateShared>) -> Result<Markup, AppErr
         .await;
         ships_with_waypoints.push(ship_waypoint);
     }
-
-    let map_json = spacetraders::waypoint_distances(waypoints.clone());
 
     Ok(page(
         html! {

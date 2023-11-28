@@ -39,6 +39,13 @@ up.compiler(".map", (el, data) => {
           shape: "triangle",
         },
       },
+      {
+        selector: ".ship",
+        style: {
+          "background-color": "#00cc00",
+          shape: "ellipse",
+        },
+      },
     ],
   });
 
