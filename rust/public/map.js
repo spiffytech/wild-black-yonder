@@ -6,7 +6,6 @@ up.compiler(".map", (el, data) => {
 
     elements: data,
     layout: {
-      //name: "cose",
       name: "preset",
     },
 
@@ -53,7 +52,14 @@ up.compiler(".map", (el, data) => {
   cy.$(".waypoint.moon").unlock();
   cy.layout({
     name: "fcose",
+    //name: "elk",
+    //name: "cise",
     //name: "cola",
-    idealEdgeLength: 1,
+    quality: "proof",
+    nodeRepulsion: 5,
+    nodeSeparation: 5,
+    gravity: 1,
+    idealEdgeLength: () => 5,
+    edgeElasticity: () => 5,
   }).run();
 });

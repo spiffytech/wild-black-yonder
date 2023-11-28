@@ -205,15 +205,22 @@ pub fn ship_html(
     extraction_yield: Option<ExtractionYield>,
 ) -> Markup {
     let on_cooldown = ship.cooldown.expiration;
+    let in_transit = ship.nav.status == ShipNavStatus::InTransit;
+
+    let poll = if on_cooldown.is_some() || in_transit {
+        Some(())
+    } else {
+        None
+    };
 
     html! {
         // The special class is necessary because unpoly needs some way to
         // automatically target the element, otherwise the polling fails.
         li
             class={"ship ship-" (ship.symbol)}
-            up-poll[on_cooldown.is_some()]
-            up-interval=[on_cooldown.clone().map(|_| "5000")]
-            up-source=[on_cooldown.clone().map(|_| format!("/ship/{}", ship.symbol))]
+            up-poll[poll.is_some()]
+            up-interval=[poll.map(|_| "5000")]
+            up-source=[poll.map(|_| format!("/ship/{}", ship.symbol))]
         {
             div {
                 (format!(

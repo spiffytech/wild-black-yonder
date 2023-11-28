@@ -320,6 +320,7 @@ pub fn map_data(waypoints: Vec<Waypoint>, ships: Vec<Ship>) -> String {
             },
             "classes": ["ship"]
         }));
+
         edges.push(json!({
             "data": {
                 "id": format!("{}-{}", ship.symbol, ship_waypoint_symbol),

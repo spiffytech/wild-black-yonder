@@ -81,7 +81,9 @@ pub fn page(content: Markup, scripts: Option<Markup>) -> Markup {
             script src="https://unpkg.com/layout-base/layout-base.js" {}
             script src="https://unpkg.com/cose-base/cose-base.js" {}
             script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js" {}
+            script src="https://unpkg.com/cytoscape-cise/cytoscape-cise.js" {}
             script src="https://unpkg.com/cytoscape-cola/cytoscape-cola.js" {}
+            script src="https://unpkg.com/cytoscape-elk/cytoscape-elk.js" {}
             script src="/map.js" {}
 
             script{(PreEscaped(r#"
